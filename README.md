@@ -26,9 +26,40 @@ cd cloudflare-ddns-updater
 
 Requires `bash`, `curl`, `flock` (util-linux) and `logger`.
 
+## Quick setup
+
+`setup.sh` creates the config files, checks them, test-runs the scripts and installs the cron job:
+
+```bash
+./setup.sh        # 1st run: pick IPv4/IPv6/both, creates the .conf file(s)
+nano cloudflare-ddns.conf
+./setup.sh        # 2nd run: checks the config, test-runs, then asks how often to run
+```
+
+- Existing `.conf` files are never overwritten.
+- The second run stops if a config is unchanged from the example or a required setting is empty.
+- The test run must succeed before the cron job is installed (skip it with `--no-test`).
+- Cron jobs are added to the current user's crontab. Rerunning never duplicates them; choosing a new schedule replaces the old line. Output goes to syslog only (`>/dev/null 2>&1` on the cron line).
+
+Non-interactive (no prompts, no output on success):
+
+```bash
+./setup.sh --record v4 --schedule 5m --quiet
+./setup.sh -r both -s "*/10 * * * *" --no-test
+```
+
+| Option | Values |
+|---|---|
+| `-r`, `--record` | `v4`, `v6`, `both` |
+| `-s`, `--schedule` | `5m`, `1h`, `1d`, `none`, or a quoted cron expression |
+| `-n`, `--no-test` | Install cron without a test run |
+| `-q`, `--quiet` | No prompts; requires `--record` and `--schedule` |
+
+Exit codes: `0` done, `1` error, `2` config file(s) created and need editing. See `./setup.sh --help`.
+
 ## Configuration
 
-Settings live in a config file, not in the scripts. Copy the example and fill it in:
+To set things up by hand instead, copy the example and fill it in:
 
 ```bash
 cp cloudflare-ddns.conf.example cloudflare-ddns.conf
