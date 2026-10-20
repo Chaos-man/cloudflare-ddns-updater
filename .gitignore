@@ -8,9 +8,10 @@ cloudflare.sh
 # Docker LOG_FILE output
 logs/
 
-# Environment files
+# Environment files (commit only .env.example)
 .env
 .env.*
+!.env.example
 
 # Private notes
 CLAUDE.md

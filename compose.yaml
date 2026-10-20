@@ -1,28 +1,24 @@
-# Cloudflare DDNS updater. See README.Docker.md for setup.
-# Before the first start, create the config file(s) next to this file and give the
-# container user (UID 10001) access:
-#   cp cloudflare-ddns.conf.example cloudflare-ddns.conf    # then edit it
-#   sudo chown 10001 cloudflare-ddns.conf && chmod 600 cloudflare-ddns.conf
-#   mkdir -p logs && sudo chown 10001 logs                   # only if LOG_FILE is used
+# Cloudflare DDNS updater. Set the values below in .env (copy .env.example), or replace
+# the ${...} references with your values. Optional settings (IPv6, notifications,
+# schedule, logging) go in .env; see README.Docker.md for the full list.
 services:
   cloudflare-ddns:
     build: .
     image: cloudflare-ddns:latest
     container_name: cloudflare-ddns
     restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
     environment:
-      DDNS_RECORD: v4               # v4, v6 or both
-      DDNS_SCHEDULE: 5m             # 5m, 1h, 1d, or a cron expression such as "*/15 * * * *"
-      RUN_ON_START: "true"          # Run once when the container starts
-      TZ: UTC                       # Timezone for log timestamps and the schedule
-      # LOG_FILE: /logs/ddns.log    # Also write logs to ./logs/ddns.log on the host
-      # LOG_MAX_SIZE: "1048576"     # Rotate LOG_FILE to ddns.log.1 past this size (bytes)
+      PUID: ${PUID:?Set PUID in .env}
+      PGID: ${PGID:?Set PGID in .env}
+      CF_API_TOKEN: ${CF_API_TOKEN:?Set CF_API_TOKEN in .env}
+      CF_ZONE_ID: ${CF_ZONE_ID:?Set CF_ZONE_ID in .env}
+      CF_RECORD_NAME: ${CF_RECORD_NAME:-}
     volumes:
-      - ./cloudflare-ddns.conf:/config/cloudflare-ddns.conf:ro
-      # - ./cloudflare-ddns-v6.conf:/config/cloudflare-ddns-v6.conf:ro   # For v6 or both
-      # - ./logs:/logs                                                   # For LOG_FILE
-    # IPv6: Docker's default network usually has no IPv6, so the container can't see the
-    # host's IPv6 address. For v6 or both (and for static_IPv6_mode), use the host network:
+      - ./logs:/logs
+    # IPv6 (CF_RECORD_NAME_V6): Docker's default network has no IPv6. Use the host's network:
     # network_mode: host
     logging:
       driver: json-file
