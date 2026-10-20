@@ -1,7 +1,7 @@
 # Cloudflare DDNS updater. Set the values below in .env (copy .env.example), or replace
 # the ${...} references with your values. For optional settings (IPv6, notifications,
-# schedule, logging), add a line under environment:, e.g. DISCORD_URI: ${DISCORD_URI},
-# and set the value in .env. See README.Docker.md for the full list.
+# schedule, logging), add them in compose.override.yaml rather than editing this file,
+# and set the values in .env. See README.Docker.md.
 services:
   cloudflare-ddns:
     build: .
@@ -16,7 +16,8 @@ services:
       CF_RECORD_NAME: ${CF_RECORD_NAME:-}
     volumes:
       - ./logs:/logs
-    # IPv6 (CF_RECORD_NAME_V6): Docker's default network has no IPv6. Use the host's network:
+    # IPv6 (CF_RECORD_NAME_V6): Docker's default network has no IPv6. Use the host's
+    # network by adding `network_mode: host` (in compose.override.yaml, see README.Docker.md):
     # network_mode: host
     logging:
       driver: json-file

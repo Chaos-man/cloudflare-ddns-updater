@@ -41,16 +41,19 @@ At least one of `CF_RECORD_NAME` and `CF_RECORD_NAME_V6` must be set.
 Compose only passes the variables listed under `environment:` into the container; `.env` just supplies their values. To use an optional setting, do both:
 
 1. Set it in `.env` (all of them are listed, commented out, in `.env.example`).
-2. Add a matching line under `environment:` in `compose.yaml`:
+2. Add a matching line under `environment:` in a `compose.override.yaml` next to `compose.yaml`:
 
 ```yaml
+services:
+  cloudflare-ddns:
     environment:
-      # ...required settings...
       DISCORD_URI: ${DISCORD_URI}
       DDNS_SCHEDULE: ${DDNS_SCHEDULE}
 ```
 
-You can also put the value directly in `compose.yaml` instead (e.g. `DDNS_SCHEDULE: 15m`).
+`docker compose` merges `compose.override.yaml` into `compose.yaml` automatically, so the usual commands don't change. The file is git-ignored, so `compose.yaml` stays unmodified and `git pull` never conflicts with your settings. Check the merged result with `docker compose config`.
+
+You can also put a value directly in the override instead of `${...}` (e.g. `DDNS_SCHEDULE: 15m`).
 
 | Variable | Default | Description |
 |---|---|---|
@@ -72,14 +75,22 @@ You can also put the value directly in `compose.yaml` instead (e.g. `DDNS_SCHEDU
 
 Values with spaces need quotes in `.env`, e.g. `SITENAME="My Home"`.
 
-After changing `.env` or `compose.yaml`, run `docker compose up -d` to recreate the container.
+After changing `.env`, `compose.yaml` or `compose.override.yaml`, run `docker compose up -d` to recreate the container.
 
 ## IPv6
 
 Docker's default bridge network has no IPv6, so the container can't see the host's IPv6 address. To update an AAAA record:
 
 1. Set `CF_RECORD_NAME_V6` in `.env` (and leave `CF_RECORD_NAME` empty for IPv6 only).
-2. In `compose.yaml`, add `CF_RECORD_NAME_V6: ${CF_RECORD_NAME_V6}` under `environment:` and uncomment `network_mode: host`.
+2. In `compose.override.yaml`, add `CF_RECORD_NAME_V6: ${CF_RECORD_NAME_V6}` under `environment:` and `network_mode: host` under the service:
+
+```yaml
+services:
+  cloudflare-ddns:
+    network_mode: host
+    environment:
+      CF_RECORD_NAME_V6: ${CF_RECORD_NAME_V6}
+```
 
 `STATIC_IPV6_MODE=true` reads the host's network interfaces, so it also needs `network_mode: host`.
 
@@ -120,7 +131,7 @@ git pull
 docker compose up -d --build
 ```
 
-`.env` and `logs/` are git-ignored, so `git pull` leaves them alone.
+`.env`, `compose.override.yaml` and `logs/` are git-ignored, so `git pull` leaves them alone.
 
 ## Troubleshooting
 
@@ -129,7 +140,8 @@ docker compose up -d --build
 | `required variable ... is missing a value` (from `docker compose`) | Set that variable in `.env` |
 | `PUID and PGID must be set to numeric IDs` | Set `PUID`/`PGID` to numbers, e.g. from `id docker` |
 | `CONFIG ERROR: ...` | Fix the named setting in `.env`, then `docker compose up -d` |
-| An optional setting in `.env` has no effect | Add it under `environment:` in `compose.yaml` too (see Optional settings) |
+| An optional setting in `.env` has no effect | Add it under `environment:` in `compose.override.yaml` too (see Optional settings) |
+| `CF_API_TOKEN looks like a Global API Key` | Set `CF_AUTH_METHOD=global` and `CF_AUTH_EMAIL` (and add both to the override), or create a scoped API token |
 | `Cannot write /logs/ddns.log` | Check that `./logs` is mounted and not read-only |
 | `Unable to establish a valid IPv6 connection` (in the log) | Use `network_mode: host` (see IPv6) |
 | `Record does not exist` (in the log) | Create the A/AAAA record in Cloudflare first |

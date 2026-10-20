@@ -8,6 +8,9 @@ cloudflare.sh
 # Docker LOG_FILE output
 logs/
 
+# Local compose additions (optional settings)
+compose.override.yaml
+
 # Environment files (commit only .env.example)
 .env
 .env.*
