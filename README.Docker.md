@@ -1,81 +1,104 @@
 # Running in Docker
 
-The image runs `cloudflare-ddns.sh` and/or `cloudflare-ddns-v6.sh` on a schedule using [supercronic](https://github.com/aptible/supercronic). Your config files are mounted at runtime; nothing secret is baked into the image.
+The container runs `cloudflare-ddns.sh` (IPv4) and/or `cloudflare-ddns-v6.sh` (IPv6) on a schedule using [supercronic](https://github.com/aptible/supercronic). All settings come from environment variables, normally kept in a `.env` file next to `compose.yaml`. Nothing secret is baked into the image.
 
 ## Quick start
 
-On the Docker host, from a clone of this repo:
-
 ```bash
-# 1. Create and edit the config (same format as the non-Docker setup)
-cp cloudflare-ddns.conf.example cloudflare-ddns.conf
-nano cloudflare-ddns.conf
+git clone -b docker https://github.com/Chaos-man/cloudflare-ddns-updater.git
+cd cloudflare-ddns-updater
 
-# 2. Let the container user (UID 10001) read it, and nobody else
-sudo chown 10001 cloudflare-ddns.conf
-sudo chmod 600 cloudflare-ddns.conf
+cp .env.example .env
+chmod 600 .env                 # it holds your API token
+nano .env                      # set PUID, PGID, CF_API_TOKEN, CF_ZONE_ID, CF_RECORD_NAME
 
-# 3. Build and start
 docker compose up -d --build
-
-# 4. Check it
-docker compose logs -f
+docker compose logs            # startup summary and first-run result
+tail -f logs/ddns.log          # everything else
 ```
 
-The first update runs as soon as the container starts, then on the schedule.
+`PUID`/`PGID` are the user and group the container runs as. Use the IDs of the user that owns your Docker files, for example `id docker`. The `./logs` folder is created on first start (if needed) and owned by `PUID:PGID`.
 
-> **Create the config file before the first `docker compose up`.** If a mounted file doesn't exist on the host, Docker creates an empty *directory* in its place. The container detects this and exits with a message; delete the directory, create the file, and start again.
+### Without a .env file
+
+`compose.yaml` only needs five values. Instead of using `.env`, you can replace each `${...}` reference with your value directly (or set them as environment variables, e.g. in a Portainer stack). Optional settings can then be added under `environment:`.
 
 ## Settings
 
-Set these under `environment:` in `compose.yaml`.
+### Required (in `compose.yaml`)
 
-| Variable | Default | Values |
+| Variable | Description |
+|---|---|
+| `PUID`, `PGID` | Numeric user and group IDs the container runs as |
+| `CF_API_TOKEN` | Cloudflare API token with Zone.DNS edit permission (or the Global API Key, see `CF_AUTH_METHOD`) |
+| `CF_ZONE_ID` | Zone ID, from the "Overview" tab of your domain in the Cloudflare dashboard |
+| `CF_RECORD_NAME` | A record to update, e.g. `home.example.com`. Leave empty for IPv6 only |
+
+At least one of `CF_RECORD_NAME` and `CF_RECORD_NAME_V6` must be set.
+
+### Optional (add to `.env`)
+
+All of these are listed, commented out, in `.env.example`.
+
+| Variable | Default | Description |
 |---|---|---|
-| `DDNS_RECORD` | `v4` | `v4`, `v6` or `both` |
+| `CF_RECORD_NAME_V6` | | AAAA record to update. Needs `network_mode: host` (see IPv6) |
+| `STATIC_IPV6_MODE` | `false` | `true` reads the address from the host's interfaces instead of an external service |
+| `LAST_NOTABLE_HEXES` | `ffff:ffff` | With `STATIC_IPV6_MODE`: the address suffix to pick, e.g. `ab12:34cd` |
+| `CF_TTL` | `3600` | Record TTL in seconds (60-86400), or `1` for automatic |
+| `CF_PROXY` | `false` | `true` to proxy the record through Cloudflare |
+| `CF_AUTH_METHOD` | `token` | `global` to use a Global API Key in `CF_API_TOKEN` |
+| `CF_AUTH_EMAIL` | | Cloudflare login email; required with `CF_AUTH_METHOD=global` |
+| `SITENAME` | | Site name used in notifications |
+| `DISCORD_URI` | | Discord webhook URL |
+| `SLACK_URI`, `SLACK_CHANNEL` | | Slack webhook URL and channel |
 | `DDNS_SCHEDULE` | `5m` | `5m`, `1h`, `1d`, or a cron expression such as `*/15 * * * *` |
-| `RUN_ON_START` | `true` | `true` runs an update when the container starts |
+| `RUN_ON_START` | `true` | Run an update as soon as the container starts |
 | `TZ` | `UTC` | Timezone for log timestamps and the schedule, e.g. `America/Chicago` |
-| `LOG_FILE` | (unset) | Also append logs to this file, e.g. `/logs/ddns.log` |
-| `LOG_MAX_SIZE` | `1048576` | Rotate `LOG_FILE` to `LOG_FILE.1` past this many bytes |
+| `LOG_FILE` | `/logs/ddns.log` | Log file inside the container (`./logs/ddns.log` on the host). Set it empty to log to `docker logs` instead |
+| `LOG_MAX_SIZE` | `1048576` | Rotate the log to `ddns.log.1` past this many bytes |
 
-Config files are read from `/config/cloudflare-ddns.conf` and `/config/cloudflare-ddns-v6.conf`. Only the ones for `DDNS_RECORD` need to exist.
+Values with spaces need quotes in `.env`, e.g. `SITENAME="My Home"`.
 
-After changing `compose.yaml` or a config file, run `docker compose up -d` to recreate the container.
+After changing `.env` or `compose.yaml`, run `docker compose up -d` to recreate the container.
 
 ## IPv6
 
-Docker's default bridge network usually has no IPv6, so the container can't see the host's IPv6 address. For `DDNS_RECORD=v6` or `both`:
+Docker's default bridge network has no IPv6, so the container can't see the host's IPv6 address. To update an AAAA record:
 
-1. Create `cloudflare-ddns-v6.conf` from its example and `chown 10001` it, as above.
-2. In `compose.yaml`, uncomment the v6 volume line and `network_mode: host`.
+1. Set `CF_RECORD_NAME_V6` in `.env` (and leave `CF_RECORD_NAME` empty for IPv6 only).
+2. Uncomment `network_mode: host` in `compose.yaml`.
 
-`static_IPv6_mode` reads the host's interfaces, so it also needs `network_mode: host`.
+`STATIC_IPV6_MODE=true` reads the host's network interfaces, so it also needs `network_mode: host`.
 
 ## Logs
 
-Logs always go to `docker logs` (rotated by the `logging:` section in `compose.yaml`):
+| Where | What |
+|---|---|
+| `docker compose logs` | Startup summary, config errors, and whether the first run succeeded |
+| `./logs/ddns.log` | Every run: fetched IP, unchanged/updated, and errors |
 
-```bash
-docker compose logs -f
-```
+The log file rotates to `ddns.log.1` when it reaches `LOG_MAX_SIZE`, keeping one old copy. If the container can't write to `/logs`, it prints a warning and logs to `docker logs` instead.
 
-To also keep them in a file on the host:
+## Startup and failures
 
-```bash
-mkdir -p logs && sudo chown 10001 logs
-```
-
-Then uncomment `LOG_FILE` and the `./logs:/logs` volume in `compose.yaml`, and run `docker compose up -d`. Logs are written to `./logs/ddns.log` and rotated to `ddns.log.1` at `LOG_MAX_SIZE`.
-
-The log directory is mounted separately from the config on purpose: the config mounts are read-only, so the container can't modify the files that hold your API token.
+- **Config errors** (missing token, zone or record name, invalid values): printed to `docker compose logs`, then the container exits. Because of `restart: unless-stopped`, Docker keeps restarting it, with increasing delays, until the settings are fixed. `docker ps` shows `Restarting`.
+- **First run fails** (bad token, record doesn't exist, network down): one line in `docker compose logs` points to the log file. The container keeps running and tries again on the next scheduled run; there are no extra retries.
+- **Scheduled run fails**: logged to `./logs/ddns.log`. The container keeps running.
 
 ## Health
 
-`docker ps` shows the container as `healthy` while the last run of each configured script succeeded, and `unhealthy` a few minutes after a failed run (bad token, Cloudflare unreachable, and so on). It goes back to `healthy` after the next successful run. See the reason with:
+`docker ps` shows the container as `healthy` while the last run of each configured record succeeded, and `unhealthy` a few minutes after a failed run. It goes back to `healthy` after the next successful run. See the reason with:
 
 ```bash
 docker inspect --format '{{json .State.Health}}' cloudflare-ddns
+```
+
+## Running an update by hand
+
+```bash
+docker exec cloudflare-ddns /app/entrypoint.sh run cloudflare-ddns      # IPv4
+docker exec cloudflare-ddns /app/entrypoint.sh run cloudflare-ddns-v6   # IPv6
 ```
 
 ## Updating
@@ -85,20 +108,15 @@ git pull
 docker compose up -d --build
 ```
 
-Your `.conf` files and `logs/` are git-ignored, so `git pull` leaves them alone.
+`.env` and `logs/` are git-ignored, so `git pull` leaves them alone.
 
 ## Troubleshooting
 
 | Message | Fix |
 |---|---|
-| `Cannot read /config/cloudflare-ddns.conf` | The file isn't mounted, or UID 10001 can't read it: `sudo chown 10001 cloudflare-ddns.conf` |
-| `/config/... is a directory` | The host file didn't exist when the container started. Remove the directory, create the file, `docker compose up -d` |
-| `Cannot write LOG_FILE` | Mount `./logs:/logs` and `sudo chown 10001 logs` |
-| `Invalid DDNS_SCHEDULE` | Use `5m`, `1h`, `1d`, or a valid 5-field cron expression |
-| `Unable to establish a valid IPv6 connection` | Use `network_mode: host` (see IPv6 above) |
-
-To run a one-off update by hand inside the running container:
-
-```bash
-docker exec cloudflare-ddns /app/entrypoint.sh run cloudflare-ddns
-```
+| `required variable ... is missing a value` (from `docker compose`) | Set that variable in `.env` |
+| `PUID and PGID must be set to numeric IDs` | Set `PUID`/`PGID` to numbers, e.g. from `id docker` |
+| `CONFIG ERROR: ...` | Fix the named setting in `.env`, then `docker compose up -d` |
+| `Cannot write /logs/ddns.log` | Check that `./logs` is mounted and not read-only |
+| `Unable to establish a valid IPv6 connection` (in the log) | Use `network_mode: host` (see IPv6) |
+| `Record does not exist` (in the log) | Create the A/AAAA record in Cloudflare first |
