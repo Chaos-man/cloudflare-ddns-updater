@@ -3,6 +3,14 @@
 # Settings come from environment variables (see .env.example); nothing secret is baked in.
 FROM alpine:3.22
 
+ARG VERSION=dev
+LABEL org.opencontainers.image.title="cloudflare-ddns" \
+      org.opencontainers.image.description="Cloudflare dynamic DNS updater (A/AAAA records) on a schedule" \
+      org.opencontainers.image.source="https://github.com/Chaos-man/cloudflare-ddns-updater" \
+      org.opencontainers.image.url="https://hub.docker.com/r/chaosmanorg/cloudflare-ddns" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${VERSION}"
+
 RUN apk add --no-cache bash curl ca-certificates tzdata iproute2 supercronic su-exec
 
 # No syslog daemon in the container; this logger writes to LOG_FILE (or the console)

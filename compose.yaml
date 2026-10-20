@@ -4,8 +4,8 @@
 # and set the values in .env. See README.Docker.md.
 services:
   cloudflare-ddns:
-    build: .
-    image: cloudflare-ddns:latest
+    image: chaosmanorg/cloudflare-ddns:latest   # Docker Hub; pin a version (e.g. :1.0.0) if you prefer
+    build: .                                    # Only used by `docker compose build` from a clone
     container_name: cloudflare-ddns
     restart: unless-stopped
     environment:

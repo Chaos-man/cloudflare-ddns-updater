@@ -2,19 +2,31 @@
 
 The container runs `cloudflare-ddns.sh` (IPv4) and/or `cloudflare-ddns-v6.sh` (IPv6) on a schedule using [supercronic](https://github.com/aptible/supercronic). All settings come from environment variables, normally kept in a `.env` file next to `compose.yaml`. Nothing secret is baked into the image.
 
+The image is published on Docker Hub as [`chaosmanorg/cloudflare-ddns`](https://hub.docker.com/r/chaosmanorg/cloudflare-ddns) for `linux/amd64` and `linux/arm64`. Tags: `latest` and versions such as `1.0.0`.
+
 ## Quick start
 
-```bash
-git clone -b docker https://github.com/Chaos-man/cloudflare-ddns-updater.git
-cd cloudflare-ddns-updater
+No clone needed: download the compose file and the settings template into a folder, fill in `.env`, and start it.
 
-cp .env.example .env
+```bash
+mkdir cloudflare-ddns && cd cloudflare-ddns
+curl -fsSLO https://raw.githubusercontent.com/Chaos-man/cloudflare-ddns-updater/docker/compose.yaml
+curl -fsSL https://raw.githubusercontent.com/Chaos-man/cloudflare-ddns-updater/docker/.env.example -o .env
 chmod 600 .env                 # it holds your API token
 nano .env                      # set PUID, PGID, CF_API_TOKEN, CF_ZONE_ID, CF_RECORD_NAME
 
-docker compose up -d --build
+docker compose up -d           # pulls chaosmanorg/cloudflare-ddns:latest
 docker compose logs            # startup summary and first-run result
 tail -f logs/ddns.log          # everything else
+```
+
+### Building from source
+
+```bash
+git clone https://github.com/Chaos-man/cloudflare-ddns-updater.git
+cd cloudflare-ddns-updater
+cp .env.example .env && chmod 600 .env && nano .env
+docker compose up -d --build   # builds the image locally instead of pulling it
 ```
 
 `PUID`/`PGID` are the user and group the container runs as. Use the IDs of the user that owns your Docker files, for example `id docker`. The `./logs` folder is created on first start (if needed) and owned by `PUID:PGID`.

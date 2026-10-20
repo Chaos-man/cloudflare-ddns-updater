@@ -1,5 +1,5 @@
 # Cloudflare Dynamic DNS IP Updater
-<img alt="GitHub" src="https://img.shields.io/github/license/Chaos-man/cloudflare-ddns-updater?color=black"> <img alt="GitHub last commit (branch)" src="https://img.shields.io/github/last-commit/Chaos-man/cloudflare-ddns-updater/main"> <img alt="GitHub contributors" src="https://img.shields.io/github/contributors/Chaos-man/cloudflare-ddns-updater">
+<img alt="GitHub" src="https://img.shields.io/github/license/Chaos-man/cloudflare-ddns-updater?color=black"> <img alt="GitHub last commit (branch)" src="https://img.shields.io/github/last-commit/Chaos-man/cloudflare-ddns-updater/docker"> <img alt="GitHub contributors" src="https://img.shields.io/github/contributors/Chaos-man/cloudflare-ddns-updater">
 
 This script is used to update Dynamic DNS (DDNS) service based on Cloudflare! Access your home network remotely via a custom domain name without a static IP! Written in pure BASH.
 
@@ -16,12 +16,15 @@ The record must already exist in Cloudflare; the scripts update it, they don't c
 
 ## Quick start
 
+The image is on Docker Hub as [`chaosmanorg/cloudflare-ddns`](https://hub.docker.com/r/chaosmanorg/cloudflare-ddns) (amd64 and arm64).
+
 ```bash
-git clone -b docker https://github.com/Chaos-man/cloudflare-ddns-updater.git
-cd cloudflare-ddns-updater
-cp .env.example .env && chmod 600 .env
+mkdir cloudflare-ddns && cd cloudflare-ddns
+curl -fsSLO https://raw.githubusercontent.com/Chaos-man/cloudflare-ddns-updater/docker/compose.yaml
+curl -fsSL https://raw.githubusercontent.com/Chaos-man/cloudflare-ddns-updater/docker/.env.example -o .env
+chmod 600 .env
 nano .env                      # PUID/PGID, CF_API_TOKEN, CF_ZONE_ID, CF_RECORD_NAME
-docker compose up -d --build
+docker compose up -d
 tail -f logs/ddns.log
 ```
 
