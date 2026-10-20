@@ -117,6 +117,14 @@ Older versions kept settings inside a copy of `cloudflare-template.sh` (usually 
 3. Point crontab at `cloudflare-ddns.sh` instead of `cloudflare.sh`.
 4. Run it once by hand, then delete `cloudflare.sh`.
 
+## Tests
+
+`tests/notify-test.sh` checks the scripts' Discord/Slack notification handling (sent, HTTP errors, connection failures, valid JSON, exit codes). It runs the scripts in a throwaway Alpine container with stand-ins for `curl` and `logger`, so nothing real is contacted. Requires Docker:
+
+```bash
+tests/notify-test.sh
+```
+
 ## Tested Environments:
 macOS Mojave version 10.14.6 (x86_64) <br />
 AlmaLinux 9.3 (Linux kernel: 5.14.0 | x86_64) <br />
