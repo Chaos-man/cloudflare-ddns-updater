@@ -142,7 +142,7 @@ write_conf() {
     printf 'record_name=%q\n' "$record_name"
     printf 'ttl=%q\n' "${CF_TTL:-3600}"
     printf 'proxy=%q\n' "${CF_PROXY:-false}"
-    printf 'sitename=%q\n' "${SITENAME:-}"
+    printf 'sitename=%q\n' "${SITENAME:-$record_name}"
     printf 'slackchannel=%q\n' "${SLACK_CHANNEL:-}"
     printf 'slackuri=%q\n' "${SLACK_URI:-}"
     printf 'discorduri=%q\n' "${DISCORD_URI:-}"

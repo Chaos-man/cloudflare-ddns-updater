@@ -36,9 +36,21 @@ tail -f logs/ddns.log          # everything else
 
 At least one of `CF_RECORD_NAME` and `CF_RECORD_NAME_V6` must be set.
 
-### Optional (add to `.env`)
+### Optional
 
-All of these are listed, commented out, in `.env.example`.
+Compose only passes the variables listed under `environment:` into the container; `.env` just supplies their values. To use an optional setting, do both:
+
+1. Set it in `.env` (all of them are listed, commented out, in `.env.example`).
+2. Add a matching line under `environment:` in `compose.yaml`:
+
+```yaml
+    environment:
+      # ...required settings...
+      DISCORD_URI: ${DISCORD_URI}
+      DDNS_SCHEDULE: ${DDNS_SCHEDULE}
+```
+
+You can also put the value directly in `compose.yaml` instead (e.g. `DDNS_SCHEDULE: 15m`).
 
 | Variable | Default | Description |
 |---|---|---|
@@ -48,8 +60,8 @@ All of these are listed, commented out, in `.env.example`.
 | `CF_TTL` | `3600` | Record TTL in seconds (60-86400), or `1` for automatic |
 | `CF_PROXY` | `false` | `true` to proxy the record through Cloudflare |
 | `CF_AUTH_METHOD` | `token` | `global` to use a Global API Key in `CF_API_TOKEN` |
-| `CF_AUTH_EMAIL` | | Cloudflare login email; required with `CF_AUTH_METHOD=global` |
-| `SITENAME` | | Site name used in notifications |
+| `CF_AUTH_EMAIL` | | Cloudflare login email. Not needed for API tokens; **required** with `CF_AUTH_METHOD=global` |
+| `SITENAME` | record name | Site name used in notifications |
 | `DISCORD_URI` | | Discord webhook URL |
 | `SLACK_URI`, `SLACK_CHANNEL` | | Slack webhook URL and channel |
 | `DDNS_SCHEDULE` | `5m` | `5m`, `1h`, `1d`, or a cron expression such as `*/15 * * * *` |
@@ -67,7 +79,7 @@ After changing `.env` or `compose.yaml`, run `docker compose up -d` to recreate 
 Docker's default bridge network has no IPv6, so the container can't see the host's IPv6 address. To update an AAAA record:
 
 1. Set `CF_RECORD_NAME_V6` in `.env` (and leave `CF_RECORD_NAME` empty for IPv6 only).
-2. Uncomment `network_mode: host` in `compose.yaml`.
+2. In `compose.yaml`, add `CF_RECORD_NAME_V6: ${CF_RECORD_NAME_V6}` under `environment:` and uncomment `network_mode: host`.
 
 `STATIC_IPV6_MODE=true` reads the host's network interfaces, so it also needs `network_mode: host`.
 
@@ -117,6 +129,7 @@ docker compose up -d --build
 | `required variable ... is missing a value` (from `docker compose`) | Set that variable in `.env` |
 | `PUID and PGID must be set to numeric IDs` | Set `PUID`/`PGID` to numbers, e.g. from `id docker` |
 | `CONFIG ERROR: ...` | Fix the named setting in `.env`, then `docker compose up -d` |
+| An optional setting in `.env` has no effect | Add it under `environment:` in `compose.yaml` too (see Optional settings) |
 | `Cannot write /logs/ddns.log` | Check that `./logs` is mounted and not read-only |
 | `Unable to establish a valid IPv6 connection` (in the log) | Use `network_mode: host` (see IPv6) |
 | `Record does not exist` (in the log) | Create the A/AAAA record in Cloudflare first |
