@@ -1,0 +1,22 @@
+# Config files with credentials (commit only the .example files)
+*.conf
+!*.conf.example
+
+# Legacy configured script from before the config split (contains the API token)
+cloudflare.sh
+
+# Environment files
+.env
+.env.*
+
+# Private notes
+CLAUDE.md
+HANDOFF.md
+
+# Editor / OS files
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
