@@ -1,0 +1,31 @@
+# Cloudflare DDNS updater. See README.Docker.md for setup.
+# Before the first start, create the config file(s) next to this file and give the
+# container user (UID 10001) access:
+#   cp cloudflare-ddns.conf.example cloudflare-ddns.conf    # then edit it
+#   sudo chown 10001 cloudflare-ddns.conf && chmod 600 cloudflare-ddns.conf
+#   mkdir -p logs && sudo chown 10001 logs                   # only if LOG_FILE is used
+services:
+  cloudflare-ddns:
+    build: .
+    image: cloudflare-ddns:latest
+    container_name: cloudflare-ddns
+    restart: unless-stopped
+    environment:
+      DDNS_RECORD: v4               # v4, v6 or both
+      DDNS_SCHEDULE: 5m             # 5m, 1h, 1d, or a cron expression such as "*/15 * * * *"
+      RUN_ON_START: "true"          # Run once when the container starts
+      TZ: UTC                       # Timezone for log timestamps and the schedule
+      # LOG_FILE: /logs/ddns.log    # Also write logs to ./logs/ddns.log on the host
+      # LOG_MAX_SIZE: "1048576"     # Rotate LOG_FILE to ddns.log.1 past this size (bytes)
+    volumes:
+      - ./cloudflare-ddns.conf:/config/cloudflare-ddns.conf:ro
+      # - ./cloudflare-ddns-v6.conf:/config/cloudflare-ddns-v6.conf:ro   # For v6 or both
+      # - ./logs:/logs                                                   # For LOG_FILE
+    # IPv6: Docker's default network usually has no IPv6, so the container can't see the
+    # host's IPv6 address. For v6 or both (and for static_IPv6_mode), use the host network:
+    # network_mode: host
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "3"

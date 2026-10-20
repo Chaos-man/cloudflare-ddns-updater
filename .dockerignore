@@ -1,0 +1,6 @@
+# Allowlist: the build only needs the scripts and docker/. Everything else, including
+# *.conf files with credentials, stays out of the build context.
+*
+!cloudflare-ddns.sh
+!cloudflare-ddns-v6.sh
+!docker/
