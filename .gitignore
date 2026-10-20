@@ -5,6 +5,9 @@
 # Legacy configured script from before the config split (contains the API token)
 cloudflare.sh
 
+# Docker LOG_FILE output
+logs/
+
 # Environment files
 .env
 .env.*

@@ -26,6 +26,8 @@ cd cloudflare-ddns-updater
 
 Requires `bash`, `curl`, `flock` (util-linux) and `logger`.
 
+To run it in Docker instead of cron on the host, see [README.Docker.md](README.Docker.md).
+
 ## Quick setup
 
 `setup.sh` creates the config files, checks them, test-runs the scripts and installs the cron job:
