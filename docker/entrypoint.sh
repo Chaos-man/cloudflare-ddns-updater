@@ -97,8 +97,16 @@ errors=()
 [[ -z "${CF_API_TOKEN:-}" ]] && errors+=("CF_API_TOKEN is not set.")
 [[ -z "${CF_ZONE_ID:-}" ]] && errors+=("CF_ZONE_ID is not set.")
 case "${CF_AUTH_METHOD:-token}" in
-  token) ;;
-  global) [[ -z "${CF_AUTH_EMAIL:-}" ]] && errors+=("CF_AUTH_EMAIL is required when CF_AUTH_METHOD=global.") ;;
+  token)
+    # Global API Keys are 37 hex characters; API tokens are longer
+    if [[ "${CF_API_TOKEN:-}" =~ ^[0-9a-f]{37}$ ]]; then
+      errors+=("CF_API_TOKEN looks like a Global API Key. Set CF_AUTH_METHOD=global and CF_AUTH_EMAIL (add both under environment: in compose.yaml), or create a scoped API token instead.")
+    fi ;;
+  global)
+    [[ -z "${CF_AUTH_EMAIL:-}" ]] && errors+=("CF_AUTH_EMAIL is required when CF_AUTH_METHOD=global.")
+    if [[ -n "${CF_API_TOKEN:-}" && ! "${CF_API_TOKEN}" =~ ^[0-9a-f]{37}$ ]]; then
+      errors+=("CF_AUTH_METHOD=global, but CF_API_TOKEN doesn't look like a Global API Key (37 hex characters). For a scoped API token, remove CF_AUTH_METHOD.")
+    fi ;;
   *) errors+=("CF_AUTH_METHOD must be 'token' or 'global'.") ;;
 esac
 # These values are used unquoted by the scripts, so only allow safe values
