@@ -1,0 +1,10 @@
+#!/bin/sh
+## Stand-in for logger used by notify-test.sh: prints every message to stderr (with or
+## without -s) so the test can check what the scripts logged.
+[ "${1:-}" = "-s" ] && shift
+if [ $# -gt 0 ]; then
+  echo "LOG: $*" >&2
+else
+  while IFS= read -r line; do echo "LOG: $line" >&2; done
+fi
+exit 0

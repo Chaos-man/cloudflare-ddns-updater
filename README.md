@@ -27,6 +27,14 @@ tail -f logs/ddns.log
 
 See [README.Docker.md](README.Docker.md) for all settings, IPv6, logs, health and troubleshooting.
 
+## Tests
+
+`tests/notify-test.sh` checks the scripts' Discord/Slack notification handling (sent, HTTP errors, connection failures, valid JSON, exit codes). It runs the scripts in a throwaway Alpine container with stand-ins for `curl` and `logger`, so nothing real is contacted. Requires Docker:
+
+```bash
+tests/notify-test.sh
+```
+
 ## Tested Environments (original scripts, without Docker):
 macOS Mojave version 10.14.6 (x86_64) <br />
 AlmaLinux 9.3 (Linux kernel: 5.14.0 | x86_64) <br />

@@ -1,0 +1,43 @@
+#!/bin/bash
+## Stand-in for curl used by notify-test.sh. Fakes the IP services, the Cloudflare API and
+## the webhooks. Webhook behavior comes from WEBHOOK_MODE: an HTTP status (204, 401, 500)
+## or "conn" for a connection failure. PATCH_MODE=fail makes the record update fail.
+url="" out="" wfmt="" method="GET" incl=0 data=""
+while (( $# )); do
+  case "$1" in
+    -o) out="$2"; shift ;;
+    -w) wfmt="$2"; shift ;;
+    -X) method="$2"; shift ;;
+    -i) incl=1 ;;
+    --data|--data-raw|-d) data="$2"; shift ;;
+    -H|--max-time|--retry|--retry-delay) shift ;;
+    http*) url="$1" ;;
+  esac
+  shift
+done
+
+case "$url" in
+  *ipify*|*icanhazip*|*ipinfo*) echo "203.0.113.7" ;;
+  *ipv6.google.com*) exit 0 ;;
+  *cdn-cgi/trace*) echo "ip=2001:db8::7" ;;
+  *api.cloudflare.com*)
+    if [[ "$method" == "PATCH" ]]; then
+      [[ "${PATCH_MODE:-ok}" == "fail" ]] \
+        && echo '{"success":false,"errors":[{"code":1000,"message":"fake failure"}]}' \
+        || echo '{"success":true,"result":{}}'
+    elif [[ "$url" == *type=AAAA* ]]; then
+      echo '{"result":[{"id":"rec123","type":"AAAA","content":"2001:db8::1"}],"success":true,"result_info":{"count":1}}'
+    else
+      echo '{"result":[{"id":"rec123","type":"A","content":"198.51.100.1"}],"success":true,"result_info":{"count":1}}'
+    fi ;;
+  *discord.test*|*slack.test*)
+    printf '%s %s\n' "$url" "${data//$'\n'/ }" >> /tmp/webhook-calls
+    if [[ "${WEBHOOK_MODE}" == "conn" ]]; then
+      [[ -n "$wfmt" ]] && printf '000'
+      exit 7
+    fi
+    [[ -n "$wfmt" ]] && printf '%s' "${WEBHOOK_MODE}"
+    [[ $incl -eq 1 ]] && printf 'HTTP/2 %s\r\n\r\n' "${WEBHOOK_MODE}"
+    exit 0 ;;
+  *) echo "fake-curl: unexpected URL $url" >&2; exit 6 ;;
+esac
