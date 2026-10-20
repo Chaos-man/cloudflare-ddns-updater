@@ -118,28 +118,14 @@ update=$(curl -s "${curl_opts[@]}" -X PATCH "https://api.cloudflare.com/client/v
                      -H "$auth_header $auth_key" \
                      -H "Content-Type: application/json" \
                      --data "{\"type\":\"A\",\"name\":\"$record_name\",\"content\":\"$CURRENT_IP\",\"ttl\":$ttl,\"proxied\":${proxy}}")
+update_status=$?
 
 ###########################################
 ## Report the status
 ###########################################
+# Only an explicit success counts; an empty or malformed response is a failure
 case "$update" in
-*"\"success\":false"*)
-  echo -e "DDNS Updater: $CURRENT_IP $record_name DDNS failed for $record_identifier ($CURRENT_IP). DUMPING RESULTS:\n$update" | logger -s 
-  if [[ $slackuri != "" ]]; then
-    curl "${curl_opts[@]}" -L -X POST $slackuri \
-    --data-raw '{
-      "channel": "'$slackchannel'",
-      "text" : "'"$sitename"' DDNS Update Failed: '$record_name': '$record_identifier' ('$CURRENT_IP')."
-    }'
-  fi
-  if [[ $discorduri != "" ]]; then
-    curl "${curl_opts[@]}" -i -H "Accept: application/json" -H "Content-Type:application/json" -X POST \
-    --data-raw '{
-      "content" : "'"$sitename"' DDNS Update Failed: '$record_name': '$record_identifier' ('$CURRENT_IP')."
-    }' $discorduri
-  fi
-  exit 1;;
-*)
+*"\"success\":true"*)
   logger "DDNS Updater: $CURRENT_IP $record_name DDNS updated."
   if [[ $slackuri != "" ]]; then
     curl "${curl_opts[@]}" -L -X POST $slackuri \
@@ -155,4 +141,20 @@ case "$update" in
     }' $discorduri
   fi
   exit 0;;
+*)
+  echo -e "DDNS Updater: $CURRENT_IP $record_name DDNS failed for $record_identifier ($CURRENT_IP) (curl exit $update_status). DUMPING RESULTS:\n$update" | logger -s
+  if [[ $slackuri != "" ]]; then
+    curl "${curl_opts[@]}" -L -X POST $slackuri \
+    --data-raw '{
+      "channel": "'$slackchannel'",
+      "text" : "'"$sitename"' DDNS Update Failed: '$record_name': '$record_identifier' ('$CURRENT_IP')."
+    }'
+  fi
+  if [[ $discorduri != "" ]]; then
+    curl "${curl_opts[@]}" -i -H "Accept: application/json" -H "Content-Type:application/json" -X POST \
+    --data-raw '{
+      "content" : "'"$sitename"' DDNS Update Failed: '$record_name': '$record_identifier' ('$CURRENT_IP')."
+    }' $discorduri
+  fi
+  exit 1;;
 esac
