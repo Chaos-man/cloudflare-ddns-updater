@@ -1,18 +1,39 @@
 #!/bin/bash
-## change to "bin/sh" when necessary
+## Updates a Cloudflare A record with this host's public IPv4 address.
+## Usage: cloudflare-ddns.sh [config file]
+## Settings are read from the config file (see cloudflare-ddns.conf.example). Lookup order:
+##   1. First argument
+##   2. $DDNS_CONFIG
+##   3. cloudflare-ddns.conf next to this script
 
-auth_email=""                                       # The email used to login 'https://dash.cloudflare.com'
-auth_method="token"                                 # Set to "global" for Global API Key or "token" for Scoped API Token
-auth_key=""                                         # Your API Token or Global API Key
-zone_identifier=""                                  # Can be found in the "Overview" tab of your domain
-record_name=""                                      # Which record you want to be synced
-ttl=3600                                            # Set the DNS TTL (seconds)
-proxy="false"                                       # Set the proxy to true or false
-sitename=""                                         # Title of site "Example Site"
-slackchannel=""                                     # Slack Channel #example
-slackuri=""                                         # URI for Slack WebHook "https://hooks.slack.com/services/xxxxx"
-discorduri=""                                       # URI for Discord WebHook "https://discordapp.com/api/webhooks/xxxxx"
+###########################################
+## Load configuration
+###########################################
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+config_file="${1:-${DDNS_CONFIG:-$script_dir/cloudflare-ddns.conf}}"
 
+if [[ ! -r "$config_file" ]]; then
+  logger -s "DDNS Updater: Config file $config_file not found or not readable."
+  exit 1
+fi
+source "$config_file"
+
+# Defaults for optional settings
+auth_method="${auth_method:-token}"
+ttl="${ttl:-3600}"
+proxy="${proxy:-false}"
+
+# Exit if required settings are missing
+for setting in auth_key zone_identifier record_name; do
+  if [[ -z "${!setting}" ]]; then
+    logger -s "DDNS Updater: '$setting' is not set in $config_file."
+    exit 1
+  fi
+done
+if [[ "$auth_method" == "global" && -z "$auth_email" ]]; then
+  logger -s "DDNS Updater: 'auth_email' is required when auth_method is \"global\"."
+  exit 1
+fi
 
 ###########################################
 ## Prevent overlapping runs

@@ -1,51 +1,43 @@
 #!/bin/bash
-## change to "bin/sh" when necessary
+## Updates a Cloudflare AAAA record with this host's IPv6 address.
+## Usage: cloudflare-ddns-v6.sh [config file]
+## Settings are read from the config file (see cloudflare-ddns-v6.conf.example). Lookup order:
+##   1. First argument
+##   2. $DDNS_CONFIG
+##   3. cloudflare-ddns-v6.conf next to this script
 
-##############  CLOUDFLARE CREDENTIALS  ##############
-# @auth_email           - The email used to login 'https://dash.cloudflare.com'
-# @auth_method          - Set to "global" for Global API Key or "token" for Scoped API Token
-# @auth_key             - Your API Token or Global API Key
-# @zone_identifier      - Can be found in the "Overview" tab of your domain
-# -------------------------------------------------- #
-auth_email=""
-auth_method="token"
-auth_key=""
-zone_identifier=""
-
-#############  DNS RECORD CONFIGURATION  #############
-# @record_name          - Which record you want to be synced
-# @ttl                  - DNS TTL (seconds), can be set between (30 if enterprise) 60 and 86400 seconds, or 1 for Automatic
-# @proxy                - Set the proxy to true or false
-# -------------------------------------------------- #
-record_name=""
-ttl=3600
-proxy="false"
-
-###############  SCRIPT CONFIGURATION  ###############
-# @static_IPv6_mode     - Useful if you are using EUI-64 IPv6 address with SLAAC IPv6 suffix token. (Privacy Extensions)
-#                       + Or some kind of static IPv6 assignment from DHCP server configuration, etc
-#                       + If set to false, the IPv6 address will be acquired from external services
-# @last_notable_hexes   - Used with `static_IPv6_mode`. Configure this to target what specific IPv6 address to search for
-#                       + E.g. Your global primary IPv6 address is 2404:6800:4001:80e::59ec:ab12:34cd, then
-#                       + You can put values (i.e. static suffixes) such as "34cd", "ab12:34cd" and etc
-# @log_header_name      - Header name used for logs
-# -------------------------------------------------- #
-static_IPv6_mode="false"
-last_notable_hexes="ffff:ffff"
+################################################
+## Load configuration
+################################################
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+config_file="${1:-${DDNS_CONFIG:-$script_dir/cloudflare-ddns-v6.conf}}"
 log_header_name="DDNS Updater_v6"
 
-#############  WEBHOOKS CONFIGURATION  ###############
-# @sitename             - Title of site "Example Site"
-# @slackchannel         - Slack Channel #example
-# @slackuri             - URI for Slack WebHook "https://hooks.slack.com/services/xxxxx"
-# @discorduri           - URI for Discord WebHook "https://discordapp.com/api/webhooks/xxxxx"
-# -------------------------------------------------- #
-sitename=""
-slackchannel=""
-slackuri=""
-discorduri=""
+if [[ ! -r "$config_file" ]]; then
+    logger -s "$log_header_name: Config file $config_file not found or not readable."
+    exit 1
+fi
+source "$config_file"
 
+# Defaults for optional settings
+auth_method="${auth_method:-token}"
+ttl="${ttl:-3600}"
+proxy="${proxy:-false}"
+static_IPv6_mode="${static_IPv6_mode:-false}"
+last_notable_hexes="${last_notable_hexes:-ffff:ffff}"
+log_header_name="${log_header_name:-DDNS Updater_v6}"
 
+# Exit if required settings are missing
+for setting in auth_key zone_identifier record_name; do
+    if [[ -z "${!setting}" ]]; then
+        logger -s "$log_header_name: '$setting' is not set in $config_file."
+        exit 1
+    fi
+done
+if [[ "$auth_method" == "global" && -z "$auth_email" ]]; then
+    logger -s "$log_header_name: 'auth_email' is required when auth_method is \"global\"."
+    exit 1
+fi
 
 ################################################
 ## Prevent overlapping runs
