@@ -1,0 +1,30 @@
+#!/bin/sh
+## Container stand-in for logger. There is no syslog daemon in the container, so messages are
+## printed to stderr (shown by `docker logs`) and, when LOG_FILE is set, appended to that file.
+## Handles the calls the DDNS scripts make: logger [-s] [message...], or the message on stdin.
+## LOG_FILE is rotated to LOG_FILE.1 when it grows past LOG_MAX_SIZE bytes (default 1 MiB).
+
+[ "${1:-}" = "-s" ] && shift
+if [ $# -gt 0 ]; then
+  msg="$*"
+else
+  msg="$(cat)"
+fi
+
+ts="$(date '+%Y-%m-%d %H:%M:%S')"
+printf '%s\n' "$msg" | while IFS= read -r line; do
+  echo "$ts $line" >&2
+  if [ -n "${LOG_FILE:-}" ]; then
+    { echo "$ts $line" >> "$LOG_FILE"; } 2>/dev/null
+  fi
+done
+
+# Rotate the log file, keeping one old copy
+if [ -n "${LOG_FILE:-}" ] && [ -f "$LOG_FILE" ]; then
+  size="$(stat -c %s "$LOG_FILE" 2>/dev/null || echo 0)"
+  if [ "$size" -gt "${LOG_MAX_SIZE:-1048576}" ]; then
+    mv -f "$LOG_FILE" "$LOG_FILE.1" 2>/dev/null
+  fi
+fi
+
+exit 0
