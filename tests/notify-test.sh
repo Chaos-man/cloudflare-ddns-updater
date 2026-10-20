@@ -17,7 +17,7 @@ fi
 image=ddns-notifytest
 
 docker build -q -t "$image" - >/dev/null <<'DOCKERFILE' || { echo "Failed to build the test image." >&2; exit 1; }
-FROM alpine:3.22
+FROM alpine:3.24
 RUN apk add --no-cache bash jq
 DOCKERFILE
 

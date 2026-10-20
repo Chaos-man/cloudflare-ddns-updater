@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Cloudflare DDNS updater: runs cloudflare-ddns.sh / cloudflare-ddns-v6.sh on a schedule.
 # Settings come from environment variables (see .env.example); nothing secret is baked in.
-FROM alpine:3.22
+FROM alpine:3.24
 
 ARG VERSION=dev
 LABEL org.opencontainers.image.title="cloudflare-ddns" \
@@ -11,7 +11,9 @@ LABEL org.opencontainers.image.title="cloudflare-ddns" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.version="${VERSION}"
 
-RUN apk add --no-cache bash curl ca-certificates tzdata iproute2 supercronic su-exec
+# apk upgrade: pick up Alpine security fixes released after the base image was built
+RUN apk upgrade --no-cache \
+ && apk add --no-cache bash curl ca-certificates tzdata iproute2 supercronic su-exec
 
 # No syslog daemon in the container; this logger writes to LOG_FILE (or the console)
 COPY docker/logger /usr/local/bin/logger
